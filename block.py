@@ -42,7 +42,8 @@ class Block(object):
         :return:<None>
         """
         file_index = str(self.index).zfill(8)  # 方便字典序排列
-        filename = f'{DATA_DICTIONARY}{file_index}.json'
+        # filename = f'{DATA_DICTIONARY}{file_index}.json'
+        filename = DATA_DICTIONARY + file_index + '.json'
         with open(filename, 'w') as block_file:
             json.dump(self.block_to_json(), fp=filename, sort_keys=True)
 

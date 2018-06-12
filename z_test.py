@@ -71,8 +71,86 @@
 # else:
 #     print("False")
 
-from flask import Flask
+# import platform
+#
+# print(platform.python_version())
+
+from flask import Flask, request, jsonify
+from utils import *
+from Node import Node
 
 app = Flask(__name__)
 
-app.route('/', method=[])
+my_node = Node()
+
+
+@app.route('/create_transaction', methods=['POST'])
+def create_transaction():
+    """
+    结点新建一笔交易
+    :return:
+    """
+    message = request.get_json()
+    signature = make_transaction(my_node.sk, message)
+    transaction = {
+        "sender": my_node.pk,
+        "signature": signature,
+        "message": message
+    }
+    my_node.broadcast_transaction(transaction)
+    my_node.add_new_transaction(transaction)
+    return "add transaction !", 200
+
+
+@app.route('/receive_transaction', methods=['POST'])
+def add_transaction():
+    """
+    获取其他结点的发来交易信息
+    :return: 是否添加成功的消息
+    """
+    transaction = request.get_json()
+    if my_node.add_new_transaction(transaction):
+        return "Valid transaction", 200
+    return "Invalid transaction", 200
+
+
+@app.route('/mine', methods=['GET'])
+def mine():
+    """
+    向其它结点广播挖矿的消息
+    :return:
+    """
+    block = my_node.mine()
+    if my_node.broadcast_new_block(block):
+        return str("block info:\n") + jsonify(block), 200
+    else:
+        return "Network error", 404
+
+
+@app.route('get_mined_block', methods=['POST'])
+def get_mined_block():
+    """
+    获取其他结点挖的区块
+    :return:
+    """
+    block = request.get_json()
+    if my_node.add_new_block(block):
+        return "Ok", 200
+    else:
+        return "Wrong", 404
+
+
+@app.route('save_to_file', methods=['GET'])
+def save_file():
+    my_node.chain.save_chain()
+    return "Save chain to file", 200
+
+
+if __name__ == '__main__':
+    from argparse import ArgumentParser
+
+    parser = ArgumentParser()
+    parser.add_argument('-p', '--port', default=5000, type=int, help='port to listen on')
+    args = parser.parse_args()
+    port = args.port
+    app.run(host='0.0.0.0', port=port)

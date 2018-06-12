@@ -63,10 +63,26 @@ class Node(object):
         for url in self.neighbors:
             try:
                 requests.get(url=url + "/", timeout=0.2)  # 0.2秒的延迟等待，否则就当做掉线处理
-                requests.post(url=url + "/transactions/new", data=json.dump(transaction, sort_keys=True))
+                requests.post(url=url + "/receive_transaction", data=json.dump(transaction, sort_keys=True))
             except:
                 self.neighbors.remove(url)  # 删除掉线的结点
                 print(f'node {url} not online !')
+
+    def broadcast_new_block(self, block):
+        """
+        向其它结点广播挖出的区块
+        :param block: 新的区块
+        :return: <None>
+        """
+        for url in self.neighbors:
+            try:
+                requests.get(url=url + "/", timeout=0.2)  # 0.2秒的延迟等待，否则就当做掉线处理
+                requests.post(url=url + "/mine", data=json.dump(block, sort_keys=True))
+                return True
+            except:
+                self.neighbors.remove(url)  # 删除掉线的结点
+                print(f'node {url} not online !')
+                return False
 
     def add_new_transaction(self, transaction):
         """
@@ -80,6 +96,20 @@ class Node(object):
         if is_valid_transaction(pk_string, message, signature) and transaction not in self.transactions:
             self.broadcast_transaction(transaction)
             self.transactions.append(transaction)
+            return True
+        return False
+
+    def add_new_block(self, block):
+        """
+        添加新的区块，为了验证其它区块挖矿的合理性
+        :param block: block
+        :return: <bool>
+        """
+        if proof_of_work(self.chain.last_block, block):
+            # 处理交易，并且添加新的区块
+            self.chain.last_block.transaction.append(self.transactions)
+            self.transactions.clear()
+            self.chain.add_block(block)
             return True
         return False
 
@@ -105,6 +135,9 @@ class Node(object):
         产生新的区块，相当于挖矿
         :return: 新的区块
         """
+        # 挖矿之前，需要先和其它结点达成共识
+        self.get_new_chain()
+
         nonce = 0
         last_block = self.chain[-1]
         while not proof_of_work(last_block, nonce):
@@ -128,6 +161,11 @@ class Node(object):
             "data": "",
             "transaction": transaction
         }
+        # 挖出新的区块后，需要把交易追加到最后一个区块中，同时清空交易缓存
+        last_block = self.chain.last_block
+        last_block.transactions.append(self.transactions)
+        transaction.clear()
+        # 追加新的区块
         block = Block(msg)
         self.chain.add_block(block)
         return block

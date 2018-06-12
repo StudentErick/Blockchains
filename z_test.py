@@ -127,7 +127,7 @@ def mine():
         return "Network error", 404
 
 
-@app.route('get_mined_block', methods=['POST'])
+@app.route('/get_mined_block', methods=['POST'])
 def get_mined_block():
     """
     获取其他结点挖的区块
@@ -140,7 +140,7 @@ def get_mined_block():
         return "Wrong", 404
 
 
-@app.route('save_to_file', methods=['GET'])
+@app.route('/save_to_file', methods=['GET'])
 def save_file():
     my_node.chain.save_chain()
     return "Save chain to file", 200
@@ -153,4 +153,5 @@ if __name__ == '__main__':
     parser.add_argument('-p', '--port', default=5000, type=int, help='port to listen on')
     args = parser.parse_args()
     port = args.port
+    my_node.port = port  # 设置端口
     app.run(host='0.0.0.0', port=port)

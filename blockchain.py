@@ -3,6 +3,7 @@
 from utils import is_valid_chain
 from config import *
 import json
+import os
 
 
 class BlockChain(object):

@@ -8,6 +8,7 @@ from urllib.parse import urlparse
 from time import time
 from block import Block
 from blockchain import BlockChain
+from config import *
 
 
 class Node(object):
@@ -17,6 +18,19 @@ class Node(object):
         self.transactions = []  # 交易的集合
         self.new_block = None  # 新的区块，用于挖矿
         self.pk, self.sk = self.get_key()  # 产生结点的公钥和私钥
+        self.port = None
+
+        self.add_neighbors()  # 初始化邻居节点
+
+    def add_neighbors(self):
+        """
+        添加邻居结点
+        :return:<None>
+        """
+        for peers in PEERS:
+            if self.port == str(peers).split(':')[2]:  # 不能添加自己的地址
+                continue
+            self.neighbors.add(peers)
 
     @staticmethod
     def get_key():
@@ -66,7 +80,7 @@ class Node(object):
                 requests.post(url=url + "/receive_transaction", data=json.dump(transaction, sort_keys=True))
             except:
                 self.neighbors.remove(url)  # 删除掉线的结点
-                print(f'node {url} not online !')
+                print("node" + url + " not online !")
 
     def broadcast_new_block(self, block):
         """
@@ -77,11 +91,11 @@ class Node(object):
         for url in self.neighbors:
             try:
                 requests.get(url=url + "/", timeout=0.2)  # 0.2秒的延迟等待，否则就当做掉线处理
-                requests.post(url=url + "/mine", data=json.dump(block, sort_keys=True))
+                requests.post(url=url + "/get_mined_block", data=json.dump(block, sort_keys=True))
                 return True
             except:
                 self.neighbors.remove(url)  # 删除掉线的结点
-                print(f'node {url} not online !')
+                print("node" + url + " not online !")
                 return False
 
     def add_new_transaction(self, transaction):
@@ -123,7 +137,7 @@ class Node(object):
                 reponse = requests.get(url=url + "/chain", timeout=0.2)  # 获取区块链的数据
             except:
                 self.neighbors.remove(url)  # 删除掉线的结点
-                print(f'node {url} not online !')
+                print("node" + url + " not online !")
                 continue
             # length = reponse['length']
             chain = reponse['chain']
